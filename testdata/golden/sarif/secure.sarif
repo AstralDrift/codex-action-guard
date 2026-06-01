@@ -1,0 +1,177 @@
+{
+  "$schema": "https://json.schemastore.org/sarif-2.1.0.json",
+  "runs": [
+    {
+      "results": [],
+      "tool": {
+        "driver": {
+          "name": "codex-action-guard",
+          "rules": [
+            {
+              "fullDescription": {
+                "text": "Detects attacker-controlled GitHub event fields interpolated into Codex prompts, prompt files, stdin, or shell-generated prompt files."
+              },
+              "help": {
+                "text": "# CODX001: Untrusted GitHub event content reaches Codex prompt\n\nDefault severity: `medium`\n\nDetects attacker-controlled GitHub event fields interpolated into Codex prompts, prompt files, stdin, or shell-generated prompt files.\n\n## Examples\n\n- with.prompt includes github.event.pull_request.body\n- a shell step writes github.event.comment.body into a prompt file consumed by codex exec\n\n## Remediation\n\nUse static prompt files, pass only stable identifiers such as PR numbers, fetch untrusted text through a sanitizer, or require a maintainer-controlled gate.\n\n## Safe patterns\n\n- prompt-file points at a reviewed file in .github/codex/prompts\n- untrusted PR text is summarized by deterministic code before it reaches Codex\n\n## False-positive notes\n\nThe finding may be acceptable when the source is strongly gated or only trusted maintainers can control the field. Keep the gate near the Codex invocation and document it.\n\n## References\n\n- openai/codex-action README\n- GitHub Actions security hardening\n"
+              },
+              "id": "CODX001",
+              "name": "Untrusted GitHub event content reaches Codex prompt",
+              "properties": {
+                "defaultSeverity": "medium"
+              },
+              "shortDescription": {
+                "text": "Untrusted GitHub event content reaches Codex prompt"
+              }
+            },
+            {
+              "fullDescription": {
+                "text": "Escalates CODX001 when the same job has write permissions, secrets, OIDC, deployment access, or later write-capable side effects."
+              },
+              "help": {
+                "text": "# CODX002: Untrusted content reaches Codex prompt in write-capable job\n\nDefault severity: `high`\n\nEscalates CODX001 when the same job has write permissions, secrets, OIDC, deployment access, or later write-capable side effects.\n\n## Examples\n\n- pull_request_target job reads a PR body into prompt and later runs gh pr merge\n\n## Remediation\n\nSplit read-only Codex generation from write-capable follow-up jobs and require schema validation plus a trusted gate before any write.\n\n## Safe patterns\n\n- read-only Codex job uploads an artifact; separate maintainer-approved job performs writes\n\n## False-positive notes\n\nThe rule is confidence-sensitive. If the job only has read permissions and no write sink, CODX001 should be the primary finding.\n\n## References\n\n- openai/codex-action Security page\n- GitHub token permissions\n"
+              },
+              "id": "CODX002",
+              "name": "Untrusted content reaches Codex prompt in write-capable job",
+              "properties": {
+                "defaultSeverity": "high"
+              },
+              "shortDescription": {
+                "text": "Untrusted content reaches Codex prompt in write-capable job"
+              }
+            },
+            {
+              "fullDescription": {
+                "text": "Flags job-level OPENAI_API_KEY or CODEX_API_KEY when the job checks out or runs repository-controlled code."
+              },
+              "help": {
+                "text": "# CODX003: OpenAI or Codex API key exposed at job scope with repo-controlled code\n\nDefault severity: `high`\n\nFlags job-level OPENAI_API_KEY or CODEX_API_KEY when the job checks out or runs repository-controlled code.\n\n## Examples\n\n- jobs.codex.env.OPENAI_API_KEY is set and the job runs actions/checkout followed by npm test\n\n## Remediation\n\nPass secrets only to the Codex action input or the smallest possible step scope. Avoid job-level env for model API keys.\n\n## Safe patterns\n\n- with.openai-api-key: ${{ secrets.OPENAI_API_KEY }} on the Codex action step\n\n## False-positive notes\n\nStep-scoped use directly on openai/codex-action is the expected safe shape and should not trigger this rule.\n\n## References\n\n- openai/codex-action README\n"
+              },
+              "id": "CODX003",
+              "name": "OpenAI or Codex API key exposed at job scope with repo-controlled code",
+              "properties": {
+                "defaultSeverity": "high"
+              },
+              "shortDescription": {
+                "text": "OpenAI or Codex API key exposed at job scope with repo-controlled code"
+              }
+            },
+            {
+              "fullDescription": {
+                "text": "Detects dangerous sandbox or safety strategy choices, especially on untrusted triggers."
+              },
+              "help": {
+                "text": "# CODX004: Codex uses danger-full-access or unsafe strategy without trusted trigger or gate\n\nDefault severity: `high`\n\nDetects dangerous sandbox or safety strategy choices, especially on untrusted triggers.\n\n## Examples\n\n- with.sandbox: danger-full-access\n- with.safety-strategy: unsafe\n- codex exec --sandbox danger-full-access\n\n## Remediation\n\nPrefer read-only or workspace-write with privilege reduction. Add actor allowlists, maintainer labels, environments, or manual dispatch.\n\n## Safe patterns\n\n- sandbox: read-only with safety-strategy: drop-sudo\n\n## False-positive notes\n\nSome self-hosted or Windows workflows may require unsafe strategy. They still need trusted prompts and tight gating.\n\n## References\n\n- openai/codex-action Safety Strategy\n"
+              },
+              "id": "CODX004",
+              "name": "Codex uses danger-full-access or unsafe strategy without trusted trigger or gate",
+              "properties": {
+                "defaultSeverity": "high"
+              },
+              "shortDescription": {
+                "text": "Codex uses danger-full-access or unsafe strategy without trusted trigger or gate"
+              }
+            },
+            {
+              "fullDescription": {
+                "text": "Detects Codex final messages or output files consumed by shell, github-script, gh, release, deploy, package publish, merge, label, or comment automation without structured validation."
+              },
+              "help": {
+                "text": "# CODX005: Codex output feeds sensitive sink without schema validation\n\nDefault severity: `high`\n\nDetects Codex final messages or output files consumed by shell, github-script, gh, release, deploy, package publish, merge, label, or comment automation without structured validation.\n\n## Examples\n\n- steps.run_codex.outputs.final-message is sent directly to actions/github-script createComment\n\n## Remediation\n\nRequire output-schema or output-schema-file, validate with jq/ajv/jsonschema, and constrain downstream commands.\n\n## Safe patterns\n\n- output-schema-file plus jq validation before posting or deploying\n\n## False-positive notes\n\nArtifact upload alone is not treated as a sensitive sink. The rule focuses on automation that changes external state.\n\n## References\n\n- SARIF 2.1.0\n- openai/codex-action Outputs\n"
+              },
+              "id": "CODX005",
+              "name": "Codex output feeds sensitive sink without schema validation",
+              "properties": {
+                "defaultSeverity": "high"
+              },
+              "shortDescription": {
+                "text": "Codex output feeds sensitive sink without schema validation"
+              }
+            },
+            {
+              "fullDescription": {
+                "text": "Detects pull_request_target or workflow_run workflows that check out PR head or workflow-run code before Codex or write-capable steps."
+              },
+              "help": {
+                "text": "# CODX006: Privileged trigger checks out untrusted code before Codex\n\nDefault severity: `critical`\n\nDetects pull_request_target or workflow_run workflows that check out PR head or workflow-run code before Codex or write-capable steps.\n\n## Examples\n\n- pull_request_target plus actions/checkout ref: ${{ github.event.pull_request.head.sha }} before Codex\n\n## Remediation\n\nDo not checkout untrusted head code in privileged jobs. Use pull_request with read-only permissions or split into an unprivileged job.\n\n## Safe patterns\n\n- pull_request_target job checks out the base ref only and gates writes by maintainer label\n\n## False-positive notes\n\nChecking out the base branch on pull_request_target is not the same as checking out attacker-controlled head code.\n\n## References\n\n- GitHub Actions pull_request_target security\n"
+              },
+              "id": "CODX006",
+              "name": "Privileged trigger checks out untrusted code before Codex",
+              "properties": {
+                "defaultSeverity": "critical"
+              },
+              "shortDescription": {
+                "text": "Privileged trigger checks out untrusted code before Codex"
+              }
+            },
+            {
+              "fullDescription": {
+                "text": "Flags missing explicit permissions, write-all, or broad write permissions on jobs invoking Codex."
+              },
+              "help": {
+                "text": "# CODX007: Codex job has broad GITHUB_TOKEN permissions\n\nDefault severity: `medium`\n\nFlags missing explicit permissions, write-all, or broad write permissions on jobs invoking Codex.\n\n## Examples\n\n- a Codex job omits permissions\n- permissions: write-all\n\n## Remediation\n\nSet explicit minimal permissions at the job level. Prefer contents: read for read-only Codex jobs.\n\n## Safe patterns\n\n- permissions: { contents: read, pull-requests: read }\n\n## False-positive notes\n\nSome workflows need narrow write scopes. The finding should name the exact write permissions seen.\n\n## References\n\n- GitHub Actions GITHUB_TOKEN permissions\n"
+              },
+              "id": "CODX007",
+              "name": "Codex job has broad GITHUB_TOKEN permissions",
+              "properties": {
+                "defaultSeverity": "medium"
+              },
+              "shortDescription": {
+                "text": "Codex job has broad GITHUB_TOKEN permissions"
+              }
+            },
+            {
+              "fullDescription": {
+                "text": "In diff mode, detects changed prompt or schema files referenced by Codex workflows."
+              },
+              "help": {
+                "text": "# CODX008: Prompt or schema file modified in same change that triggers Codex\n\nDefault severity: `medium`\n\nIn diff mode, detects changed prompt or schema files referenced by Codex workflows.\n\n## Examples\n\n- .github/codex/prompts/review.md changes with .github/workflows/codex-review.yml\n\n## Remediation\n\nReview prompt and schema changes as code. Require maintainer approval before write-capable Codex workflows use them.\n\n## Safe patterns\n\n- separate PRs for prompt/schema changes and workflow permission changes\n\n## False-positive notes\n\nChanging a prompt is often legitimate. The risk is that trusted instructions or output constraints changed with workflow behavior.\n\n## References\n\n- Prompt injection review guidance\n"
+              },
+              "id": "CODX008",
+              "name": "Prompt or schema file modified in same change that triggers Codex",
+              "properties": {
+                "defaultSeverity": "medium"
+              },
+              "shortDescription": {
+                "text": "Prompt or schema file modified in same change that triggers Codex"
+              }
+            },
+            {
+              "fullDescription": {
+                "text": "Detects write-capable Codex jobs without actor, allow-users, maintainer label, environment, or manual approval gates."
+              },
+              "help": {
+                "text": "# CODX009: Write-capable Codex workflow lacks trusted gate\n\nDefault severity: `high`\n\nDetects write-capable Codex jobs without actor, allow-users, maintainer label, environment, or manual approval gates.\n\n## Examples\n\n- issue_comment workflow invokes Codex and comments back without actor checks\n\n## Remediation\n\nAdd allow-users, actor allowlists, maintainer label checks, protected environments, or workflow_dispatch-only execution.\n\n## Safe patterns\n\n- if condition requires a maintainer label and the action has allow-users set\n\n## False-positive notes\n\nThe rule recognizes obvious gates but cannot prove branch protection or organization policy. Treat medium confidence as a review prompt.\n\n## References\n\n- openai/codex-action allow-users\n- GitHub environments\n"
+              },
+              "id": "CODX009",
+              "name": "Write-capable Codex workflow lacks trusted gate",
+              "properties": {
+                "defaultSeverity": "high"
+              },
+              "shortDescription": {
+                "text": "Write-capable Codex workflow lacks trusted gate"
+              }
+            },
+            {
+              "fullDescription": {
+                "text": "Detects free-form Codex output posted to PR/issue comments, releases, summaries, or generated files without constraints."
+              },
+              "help": {
+                "text": "# CODX010: Codex output is posted without size limits, escaping, redaction, or schema constraints\n\nDefault severity: `medium`\n\nDetects free-form Codex output posted to PR/issue comments, releases, summaries, or generated files without constraints.\n\n## Examples\n\n- CODEX_FINAL_MESSAGE is used as a GitHub issue comment body with no truncation or escaping\n\n## Remediation\n\nUse schema constraints, length limits, escaping, and secret redaction before posting output.\n\n## Safe patterns\n\n- validated JSON plus explicit truncation before createComment\n\n## False-positive notes\n\nFree-form human-only artifacts are lower risk. Posting to public comments or releases needs more care.\n\n## References\n\n- openai/codex-action output-schema-file\n"
+              },
+              "id": "CODX010",
+              "name": "Codex output is posted without size limits, escaping, redaction, or schema constraints",
+              "properties": {
+                "defaultSeverity": "medium"
+              },
+              "shortDescription": {
+                "text": "Codex output is posted without size limits, escaping, redaction, or schema constraints"
+              }
+            }
+          ],
+          "semanticVersion": "1.0.0"
+        }
+      }
+    }
+  ],
+  "version": "2.1.0"
+}

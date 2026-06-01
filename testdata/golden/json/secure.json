@@ -1,0 +1,101 @@
+{
+  "metadata": {
+    "tool": "codex-action-guard",
+    "version": "1.0.0",
+    "rule_version": "v0",
+    "generated_at": "2026-01-02T03:04:05Z"
+  },
+  "root": "\u003cROOT\u003e",
+  "scanned_files": [
+    ".github/codex/prompts/review.md",
+    ".github/codex/schemas/review.schema.json",
+    ".github/workflows/codex-secure.yml"
+  ],
+  "codex_workflow_files": [
+    ".github/workflows/codex-secure.yml"
+  ],
+  "codex_invocations": [
+    {
+      "file": ".github/workflows/codex-secure.yml",
+      "line": 24,
+      "job": "readonly-review",
+      "step": "Run Codex with trusted prompt and schema",
+      "kind": "openai/codex-action",
+      "prompt_boundary": "Run Codex with trusted prompt and schema (prompt-file: .github/codex/prompts/review.md)",
+      "prompt_file": ".github/codex/prompts/review.md",
+      "output_file": "codex-review.json",
+      "output_schema_file": ".github/codex/schemas/review.schema.json",
+      "sandbox": "read-only",
+      "safety_strategy": "drop-sudo",
+      "privilege_context": "read permissions: contents, pull-requests"
+    },
+    {
+      "file": ".github/workflows/codex-secure.yml",
+      "line": 53,
+      "job": "gated-comment",
+      "step": "Run Codex with schema",
+      "kind": "openai/codex-action",
+      "prompt_boundary": "Run Codex with schema (prompt-file: .github/codex/prompts/review.md)",
+      "prompt_file": ".github/codex/prompts/review.md",
+      "output_file": "codex-review.json",
+      "output_schema_file": ".github/codex/schemas/review.schema.json",
+      "sandbox": "read-only",
+      "safety_strategy": "drop-sudo",
+      "privilege_context": "write permissions: issues"
+    }
+  ],
+  "findings": [],
+  "safe_patterns": [
+    {
+      "file": ".github/workflows/codex-secure.yml",
+      "line": 24,
+      "pattern": "Codex uses a checked-in prompt-file instead of large inline prompt text."
+    },
+    {
+      "file": ".github/workflows/codex-secure.yml",
+      "line": 24,
+      "pattern": "Codex output is constrained by an output schema."
+    },
+    {
+      "file": ".github/workflows/codex-secure.yml",
+      "line": 24,
+      "pattern": "Codex runs with read-only sandbox settings."
+    },
+    {
+      "file": ".github/workflows/codex-secure.yml",
+      "line": 16,
+      "pattern": "Codex job declares read-only or empty GITHUB_TOKEN permissions."
+    },
+    {
+      "file": ".github/workflows/codex-secure.yml",
+      "line": 23,
+      "pattern": "actions/checkout disables persisted credentials."
+    },
+    {
+      "file": ".github/workflows/codex-secure.yml",
+      "line": 53,
+      "pattern": "Codex uses a checked-in prompt-file instead of large inline prompt text."
+    },
+    {
+      "file": ".github/workflows/codex-secure.yml",
+      "line": 53,
+      "pattern": "Codex output is constrained by an output schema."
+    },
+    {
+      "file": ".github/workflows/codex-secure.yml",
+      "line": 53,
+      "pattern": "Codex runs with read-only sandbox settings."
+    },
+    {
+      "file": ".github/workflows/codex-secure.yml",
+      "line": 52,
+      "pattern": "actions/checkout disables persisted credentials."
+    },
+    {
+      "file": ".github/workflows/codex-secure.yml",
+      "line": 42,
+      "pattern": "Codex job has an obvious trusted gate such as actor, label, allow-users, or environment approval."
+    }
+  ],
+  "profile_suggestions": []
+}

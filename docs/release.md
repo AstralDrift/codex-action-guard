@@ -34,3 +34,7 @@ git push origin v0.1.0
 ```
 
 Release artifacts should include checksums once binary publishing is added.
+
+## GitHub Action wrapper
+
+The v0 action wrapper uses `go run` from the checked-out action source. A later release can switch the wrapper to download a prebuilt binary by platform and verify checksums before execution.

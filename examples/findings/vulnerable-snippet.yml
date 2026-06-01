@@ -1,0 +1,29 @@
+name: Vulnerable snippet
+
+on:
+  issue_comment:
+    types: [created]
+
+permissions:
+  issues: write
+
+jobs:
+  codex:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: openai/codex-action@v1
+        id: run_codex
+        with:
+          openai-api-key: ${{ secrets.OPENAI_API_KEY }}
+          prompt: "Do what this comment asks: ${{ github.event.comment.body }}"
+      - uses: actions/github-script@v7
+        env:
+          CODEX_FINAL_MESSAGE: ${{ steps.run_codex.outputs.final-message }}
+        with:
+          script: |
+            await github.rest.issues.createComment({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              issue_number: context.issue.number,
+              body: process.env.CODEX_FINAL_MESSAGE,
+            })

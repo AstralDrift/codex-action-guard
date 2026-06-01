@@ -4,5 +4,5 @@
 coverage.txt
 dist/
 bin/
-codex-action-guard
+/codex-action-guard
 codex-action-guard.sarif

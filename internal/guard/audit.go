@@ -12,11 +12,12 @@ import (
 )
 
 type workflowInfo struct {
+	repoRoot string
 	absFile  string
 	relFile  string
 	raw      string
 	lines    []string
-	root     *yaml.Node
+	doc      *yaml.Node
 	triggers map[string]bool
 }
 
@@ -49,11 +50,20 @@ type codexInvocation struct {
 	summary          Invocation
 	job              *jobInfo
 	step             stepInfo
-	promptText       string
-	promptLine       int
+	promptSources    []promptSource
 	codexArgs        string
 	outputSchemaText string
 	hasSchema        bool
+}
+
+type promptSource struct {
+	File         string
+	Text         string
+	Raw          string
+	Lines        []string
+	FallbackLine int
+	Boundary     string
+	Description  string
 }
 
 type permissionContext struct {
@@ -73,9 +83,13 @@ type envSecret struct {
 }
 
 type untrustedMatch struct {
-	Source string
-	Line   int
-	Text   string
+	Source      string
+	File        string
+	Line        int
+	Text        string
+	Lines       []string
+	Boundary    string
+	Description string
 }
 
 type sinkInfo struct {
@@ -123,9 +137,19 @@ func AuditPath(target string, opts AuditOptions) (Report, error) {
 		rootStart = filepath.Dir(absTarget)
 	}
 	root := findRepoRoot(rootStart)
-	report := NewReport(root, opts.ToolVersion)
+	scanRoot := root
+	if len(opts.ChangedFiles) == 0 {
+		if info.IsDir() {
+			scanRoot = absTarget
+		} else if inferred, ok := inferWorkflowRoot(absTarget); ok {
+			scanRoot = inferred
+		}
+	} else if info.IsDir() && absTarget != root {
+		scanRoot = absTarget
+	}
+	report := NewReport(scanRoot, opts.ToolVersion)
 
-	files, err := collectAuditFiles(root, absTarget, info, opts)
+	files, err := collectAuditFiles(scanRoot, absTarget, info, opts)
 	if err != nil {
 		return Report{}, err
 	}
@@ -141,7 +165,7 @@ func AuditPath(target string, opts AuditOptions) (Report, error) {
 		if !isWorkflowFile(rel) {
 			continue
 		}
-		if err := analyzeWorkflow(root, rel, changed, opts, &report); err != nil {
+		if err := analyzeWorkflow(scanRoot, rel, changed, opts, &report); err != nil {
 			return Report{}, err
 		}
 	}
@@ -247,11 +271,12 @@ func analyzeWorkflow(root string, rel string, changed map[string]bool, opts Audi
 		return fmt.Errorf("%s: %w", rel, err)
 	}
 	wf := workflowInfo{
+		repoRoot: root,
 		absFile:  abs,
 		relFile:  rel,
 		raw:      string(data),
 		lines:    strings.Split(string(data), "\n"),
-		root:     parsed,
+		doc:      parsed,
 		triggers: workflowTriggers(parsed),
 	}
 
@@ -421,6 +446,40 @@ func buildCodexInvocation(wf workflowInfo, job *jobInfo, step stepInfo) (*codexI
 		promptBoundary = step.name + " (" + promptBoundary + ")"
 	}
 
+	promptSources := []promptSource{}
+	if promptText != "" {
+		promptSources = append(promptSources, promptSource{
+			File:         wf.relFile,
+			Text:         promptText,
+			Raw:          wf.raw,
+			Lines:        wf.lines,
+			FallbackLine: promptLine,
+			Boundary:     promptBoundary,
+			Description:  "Untrusted GitHub event content is interpolated into the Codex prompt boundary.",
+		})
+	}
+	if promptFile != "" {
+		if source, ok := promptFileSource(wf, promptFile); ok {
+			promptSources = append(promptSources, source)
+		}
+		for _, previous := range job.steps {
+			if previous.index >= step.index {
+				break
+			}
+			if stepWritesPromptFile(previous, promptFile) {
+				promptSources = append(promptSources, promptSource{
+					File:         wf.relFile,
+					Text:         previous.run,
+					Raw:          wf.raw,
+					Lines:        wf.lines,
+					FallbackLine: previous.line,
+					Boundary:     stepLabel(previous) + " (shell-generated prompt-file: " + promptFile + ")",
+					Description:  "A shell step appears to write untrusted content into a prompt file consumed by Codex.",
+				})
+			}
+		}
+	}
+
 	inv := Invocation{
 		File:             wf.relFile,
 		Line:             step.line,
@@ -439,8 +498,7 @@ func buildCodexInvocation(wf workflowInfo, job *jobInfo, step stepInfo) (*codexI
 		summary:          inv,
 		job:              job,
 		step:             step,
-		promptText:       promptText,
-		promptLine:       promptLine,
+		promptSources:    promptSources,
 		codexArgs:        codexArgs,
 		outputSchemaText: outputSchema,
 		hasSchema:        outputSchema != "" || strings.Contains(codexArgs, "--output-schema"),
@@ -448,27 +506,41 @@ func buildCodexInvocation(wf workflowInfo, job *jobInfo, step stepInfo) (*codexI
 }
 
 func evaluateInvocationRules(wf workflowInfo, jobs []*jobInfo, inv *codexInvocation, report *Report) {
-	untrusted := findUntrustedMatches(inv.promptText, inv.promptLine, wf.raw)
+	untrusted := findInvocationUntrustedMatches(inv)
 	if len(untrusted) > 0 {
 		for _, match := range untrusted {
-			addFinding(report, findingFromRule("CODX001", wf, match.Line,
+			f := findingFromRule("CODX001", wf, match.Line,
 				match.Source,
-				inv.summary.PromptBoundary,
+				match.Boundary,
 				invocationLabel(inv),
 				inv.job.permissions.Description(),
 				"",
-				[]Evidence{evidence(wf, match.Line, "Untrusted GitHub event content is interpolated into the Codex prompt boundary.")},
-			))
+				[]Evidence{{
+					File:        match.File,
+					Line:        match.Line,
+					Description: match.Description,
+					Snippet:     lineSnippet(match.Lines, match.Line),
+				}},
+			)
+			f.File = match.File
+			addFinding(report, f)
 		}
 		if jobHasSensitiveContext(inv.job) {
-			addFinding(report, findingFromRule("CODX002", wf, untrusted[0].Line,
+			f := findingFromRule("CODX002", wf, untrusted[0].Line,
 				untrusted[0].Source,
-				inv.summary.PromptBoundary,
+				untrusted[0].Boundary,
 				invocationLabel(inv),
 				sensitivePrivilegeContext(inv.job),
 				"",
-				[]Evidence{evidence(wf, untrusted[0].Line, "The untrusted prompt source shares a job with secrets, write permissions, OIDC, or write-capable sinks.")},
-			))
+				[]Evidence{{
+					File:        untrusted[0].File,
+					Line:        untrusted[0].Line,
+					Description: "The untrusted prompt source shares a job with secrets, write permissions, OIDC, or write-capable sinks.",
+					Snippet:     lineSnippet(untrusted[0].Lines, untrusted[0].Line),
+				}},
+			)
+			f.File = untrusted[0].File
+			addFinding(report, f)
 		}
 	}
 
@@ -772,6 +844,72 @@ func findUntrustedMatches(text string, fallbackLine int, raw string) []untrusted
 	return matches
 }
 
+func findInvocationUntrustedMatches(inv *codexInvocation) []untrustedMatch {
+	var out []untrustedMatch
+	for _, source := range inv.promptSources {
+		raw := source.Raw
+		if raw == "" {
+			raw = source.Text
+		}
+		matches := findUntrustedMatches(source.Text, source.FallbackLine, raw)
+		for _, match := range matches {
+			match.File = source.File
+			match.Lines = source.Lines
+			match.Boundary = source.Boundary
+			match.Description = source.Description
+			out = append(out, match)
+		}
+	}
+	return out
+}
+
+func promptFileSource(wf workflowInfo, promptFile string) (promptSource, bool) {
+	rel := normalizeWorkflowRef(promptFile)
+	if rel == "" || strings.Contains(rel, "${{") {
+		return promptSource{}, false
+	}
+	path := filepath.Join(wf.repoRoot, filepath.FromSlash(rel))
+	data, err := os.ReadFile(path)
+	if err != nil {
+		return promptSource{}, false
+	}
+	text := string(data)
+	return promptSource{
+		File:         rel,
+		Text:         text,
+		Raw:          text,
+		Lines:        strings.Split(text, "\n"),
+		FallbackLine: 1,
+		Boundary:     "prompt-file: " + promptFile,
+		Description:  "Untrusted GitHub event content appears in a prompt file consumed by Codex.",
+	}, true
+}
+
+func stepWritesPromptFile(step stepInfo, promptFile string) bool {
+	if step.run == "" {
+		return false
+	}
+	run := strings.ToLower(step.run)
+	promptFile = strings.ToLower(normalizeWorkflowRef(promptFile))
+	if promptFile == "" {
+		return false
+	}
+	base := strings.ToLower(filepath.Base(promptFile))
+	if !strings.Contains(run, promptFile) && !strings.Contains(run, base) {
+		return false
+	}
+	if len(findUntrustedMatches(step.run, step.line, step.run)) == 0 {
+		return false
+	}
+	writeMarkers := []string{">", "tee ", "cat <<", "printf ", "echo "}
+	for _, marker := range writeMarkers {
+		if strings.Contains(run, marker) {
+			return true
+		}
+	}
+	return false
+}
+
 func unsafeCodexMode(inv *codexInvocation) (string, int) {
 	unsafeText := strings.ToLower(strings.Join([]string{
 		inv.summary.Sandbox,
@@ -898,11 +1036,23 @@ func downstreamSinks(inv *codexInvocation, jobs []*jobInfo) []sinkInfo {
 			if job.id == inv.job.id && step.index <= inv.step.index {
 				continue
 			}
+			if job.id != inv.job.id && !strings.Contains(strings.ToLower(nodeText(step.node)), "needs."+strings.ToLower(inv.job.id)+".outputs") {
+				continue
+			}
 			if !mentionsCodexOutput(step, inv) {
 				continue
 			}
 			if sink := classifySink(step, inv.summary.OutputFile); sink.Kind != "" {
 				sinks = append(sinks, sink)
+			} else if step.run != "" {
+				sinks = append(sinks, sinkInfo{
+					Line:          step.line,
+					Kind:          "shell command",
+					Detail:        stepLabel(step) + ": shell command consumes Codex output",
+					Snippet:       strings.TrimSpace(step.run),
+					Posting:       isPostingSink(strings.ToLower(step.run)),
+					HasConstraint: hasOutputConstraint(strings.ToLower(step.run)),
+				})
 			}
 		}
 	}
@@ -1083,6 +1233,20 @@ func findRepoRoot(start string) string {
 		}
 		dir = next
 	}
+}
+
+func inferWorkflowRoot(absFile string) (string, bool) {
+	parts := strings.Split(filepath.ToSlash(absFile), "/")
+	for i := len(parts) - 3; i >= 0; i-- {
+		if parts[i] == ".github" && i+1 < len(parts) && parts[i+1] == "workflows" {
+			root := filepath.FromSlash(strings.Join(parts[:i], "/"))
+			if root == "" {
+				root = string(filepath.Separator)
+			}
+			return root, true
+		}
+	}
+	return "", false
 }
 
 func isWorkflowFile(rel string) bool {

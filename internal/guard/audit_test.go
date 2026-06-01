@@ -148,6 +148,74 @@ jobs:
 	}
 }
 
+func TestAuditDetectsUntrustedPromptFileContent(t *testing.T) {
+	root := t.TempDir()
+	writeFile(t, root, ".github/workflows/prompt-file.yml", `name: prompt file
+on:
+  pull_request:
+permissions:
+  contents: read
+jobs:
+  codex:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    steps:
+      - uses: openai/codex-action@v1
+        with:
+          openai-api-key: ${{ secrets.OPENAI_API_KEY }}
+          prompt-file: .github/codex/prompts/review.md
+          sandbox: read-only
+`)
+	writeFile(t, root, ".github/codex/prompts/review.md", "Review this text: ${{ github.event.pull_request.body }}\n")
+
+	report, err := AuditPath(root, AuditOptions{All: true})
+	if err != nil {
+		t.Fatal(err)
+	}
+	var found bool
+	for _, finding := range report.Findings {
+		if finding.RuleID == "CODX001" && finding.File == ".github/codex/prompts/review.md" {
+			found = true
+		}
+	}
+	if !found {
+		t.Fatalf("expected CODX001 in prompt file, got %#v", report.Findings)
+	}
+}
+
+func TestAuditDetectsShellGeneratedPromptFile(t *testing.T) {
+	root := t.TempDir()
+	writeFile(t, root, ".github/workflows/generated-prompt.yml", `name: generated prompt
+on:
+  issue_comment:
+permissions:
+  contents: read
+jobs:
+  codex:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    steps:
+      - name: Build prompt
+        run: |
+          echo "${{ github.event.comment.body }}" > prompt.md
+      - uses: openai/codex-action@v1
+        with:
+          openai-api-key: ${{ secrets.OPENAI_API_KEY }}
+          prompt-file: prompt.md
+          sandbox: read-only
+`)
+
+	report, err := AuditPath(root, AuditOptions{All: true})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !hasRule(report, "CODX001") {
+		t.Fatalf("expected CODX001 for shell-generated prompt file, got %#v", report.Findings)
+	}
+}
+
 func writeFile(t *testing.T, root string, rel string, contents string) {
 	t.Helper()
 	path := filepath.Join(root, filepath.FromSlash(rel))
