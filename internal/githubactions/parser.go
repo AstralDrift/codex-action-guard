@@ -8,38 +8,48 @@ import (
 )
 
 func ParseWorkflow(file string, data []byte) (Workflow, error) {
-	var doc yaml.Node
-	if err := yaml.Unmarshal(data, &doc); err != nil {
+	root, err := ParseYAMLDocument(data)
+	if err != nil {
 		return Workflow{}, fmt.Errorf("%s: %w", file, err)
 	}
-	if len(doc.Content) == 0 {
-		return Workflow{}, fmt.Errorf("%s: empty workflow", file)
-	}
-	root := doc.Content[0]
-	workflow := Workflow{File: file, Triggers: parseTriggers(lookup(root, "on"))}
-	jobs := lookup(root, "jobs")
-	for _, pair := range pairs(jobs) {
-		job := Job{ID: pair.Key.Value, Line: pair.Value.Line, Permissions: ParsePermissions(lookup(pair.Value, "permissions"))}
-		steps := lookup(pair.Value, "steps")
-		for _, stepNode := range steps.Content {
+	workflow := Workflow{File: file, Root: root, Triggers: ParseTriggers(Lookup(root, "on"))}
+	jobs := Lookup(root, "jobs")
+	for _, pair := range Pairs(jobs) {
+		if pair.Value.Kind != yaml.MappingNode {
+			continue
+		}
+		job := Job{
+			ID:          pair.Key.Value,
+			Node:        pair.Value,
+			Line:        pair.Value.Line,
+			Permissions: ParsePermissions(Lookup(pair.Value, "permissions")),
+		}
+		steps := Lookup(pair.Value, "steps")
+		if steps == nil || steps.Kind != yaml.SequenceNode {
+			workflow.Jobs = append(workflow.Jobs, job)
+			continue
+		}
+		for i, stepNode := range steps.Content {
 			if stepNode.Kind != yaml.MappingNode {
 				continue
 			}
 			job.Steps = append(job.Steps, Step{
-				Name: scalar(lookup(stepNode, "name")),
-				ID:   scalar(lookup(stepNode, "id")),
-				Uses: scalar(lookup(stepNode, "uses")),
-				Run:  scalar(lookup(stepNode, "run")),
-				Line: stepNode.Line,
+				Index: i,
+				Node:  stepNode,
+				Name:  Scalar(Lookup(stepNode, "name")),
+				ID:    Scalar(Lookup(stepNode, "id")),
+				Uses:  Scalar(Lookup(stepNode, "uses")),
+				Run:   Scalar(Lookup(stepNode, "run")),
+				With:  MapToStringNodes(Lookup(stepNode, "with")),
+				Line:  stepNode.Line,
 			})
 		}
 		workflow.Jobs = append(workflow.Jobs, job)
 	}
-	sort.Slice(workflow.Jobs, func(i, j int) bool { return workflow.Jobs[i].ID < workflow.Jobs[j].ID })
 	return workflow, nil
 }
 
-func parseTriggers(node *yaml.Node) []string {
+func ParseTriggers(node *yaml.Node) []string {
 	seen := map[string]bool{}
 	add := func(value string) {
 		if value != "" {
@@ -55,7 +65,7 @@ func parseTriggers(node *yaml.Node) []string {
 			add(item.Value)
 		}
 	case node.Kind == yaml.MappingNode:
-		for _, pair := range pairs(node) {
+		for _, pair := range Pairs(node) {
 			add(pair.Key.Value)
 		}
 	}
@@ -67,34 +77,10 @@ func parseTriggers(node *yaml.Node) []string {
 	return out
 }
 
-type pair struct {
-	Key   *yaml.Node
-	Value *yaml.Node
-}
-
-func pairs(node *yaml.Node) []pair {
-	if node == nil || node.Kind != yaml.MappingNode {
-		return nil
-	}
-	var out []pair
-	for i := 0; i+1 < len(node.Content); i += 2 {
-		out = append(out, pair{Key: node.Content[i], Value: node.Content[i+1]})
+func TriggerSet(triggers []string) map[string]bool {
+	out := map[string]bool{}
+	for _, trigger := range triggers {
+		out[trigger] = true
 	}
 	return out
-}
-
-func lookup(node *yaml.Node, key string) *yaml.Node {
-	for _, pair := range pairs(node) {
-		if pair.Key.Value == key {
-			return pair.Value
-		}
-	}
-	return nil
-}
-
-func scalar(node *yaml.Node) string {
-	if node == nil || node.Kind != yaml.ScalarNode {
-		return ""
-	}
-	return node.Value
 }

@@ -1,4 +1,4 @@
-package guard
+package githubactions
 
 import (
 	"bytes"
@@ -8,12 +8,12 @@ import (
 	"gopkg.in/yaml.v3"
 )
 
-type yamlPair struct {
+type NodePair struct {
 	Key   *yaml.Node
 	Value *yaml.Node
 }
 
-func parseYAML(data []byte) (*yaml.Node, error) {
+func ParseYAMLDocument(data []byte) (*yaml.Node, error) {
 	var doc yaml.Node
 	if err := yaml.Unmarshal(data, &doc); err != nil {
 		return nil, err
@@ -24,19 +24,19 @@ func parseYAML(data []byte) (*yaml.Node, error) {
 	return doc.Content[0], nil
 }
 
-func mapPairs(node *yaml.Node) []yamlPair {
+func Pairs(node *yaml.Node) []NodePair {
 	if node == nil || node.Kind != yaml.MappingNode {
 		return nil
 	}
-	pairs := make([]yamlPair, 0, len(node.Content)/2)
+	out := make([]NodePair, 0, len(node.Content)/2)
 	for i := 0; i+1 < len(node.Content); i += 2 {
-		pairs = append(pairs, yamlPair{Key: node.Content[i], Value: node.Content[i+1]})
+		out = append(out, NodePair{Key: node.Content[i], Value: node.Content[i+1]})
 	}
-	return pairs
+	return out
 }
 
-func mapLookup(node *yaml.Node, key string) *yaml.Node {
-	for _, pair := range mapPairs(node) {
+func Lookup(node *yaml.Node, key string) *yaml.Node {
+	for _, pair := range Pairs(node) {
 		if pair.Key.Value == key {
 			return pair.Value
 		}
@@ -44,16 +44,7 @@ func mapLookup(node *yaml.Node, key string) *yaml.Node {
 	return nil
 }
 
-func mapLookupPair(node *yaml.Node, key string) (yamlPair, bool) {
-	for _, pair := range mapPairs(node) {
-		if pair.Key.Value == key {
-			return pair, true
-		}
-	}
-	return yamlPair{}, false
-}
-
-func scalarValue(node *yaml.Node) string {
+func Scalar(node *yaml.Node) string {
 	if node == nil {
 		return ""
 	}
@@ -68,7 +59,7 @@ func scalarValue(node *yaml.Node) string {
 	return strings.TrimSpace(buf.String())
 }
 
-func nodeText(node *yaml.Node) string {
+func NodeText(node *yaml.Node) string {
 	if node == nil {
 		return ""
 	}
@@ -96,22 +87,22 @@ func nodeText(node *yaml.Node) string {
 	}
 }
 
-func mapToStringNodes(node *yaml.Node) map[string]*yaml.Node {
+func MapToStringNodes(node *yaml.Node) map[string]*yaml.Node {
 	out := map[string]*yaml.Node{}
-	for _, pair := range mapPairs(node) {
+	for _, pair := range Pairs(node) {
 		out[pair.Key.Value] = pair.Value
 	}
 	return out
 }
 
-func lineSnippet(lines []string, line int) string {
+func LineSnippet(lines []string, line int) string {
 	if line <= 0 || line > len(lines) {
 		return ""
 	}
 	return strings.TrimSpace(lines[line-1])
 }
 
-func firstLineOf(text string, needle string, fallback int) int {
+func FirstLineOf(text string, needle string, fallback int) int {
 	if needle == "" {
 		return fallback
 	}

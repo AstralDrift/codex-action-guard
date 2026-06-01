@@ -60,12 +60,56 @@ func TestVulnerableFixtureJSONAndSARIFRender(t *testing.T) {
 	}
 	var sarifShape struct {
 		Version string `json:"version"`
-		Runs    []any  `json:"runs"`
+		Runs    []struct {
+			Results []struct {
+				RuleID    string `json:"ruleId"`
+				Level     string `json:"level"`
+				Locations []struct {
+					PhysicalLocation struct {
+						ArtifactLocation struct {
+							URI string `json:"uri"`
+						} `json:"artifactLocation"`
+						Region struct {
+							StartLine int `json:"startLine"`
+						} `json:"region"`
+					} `json:"physicalLocation"`
+				} `json:"locations"`
+				Properties struct {
+					Severity         Severity   `json:"severity"`
+					Confidence       Confidence `json:"confidence"`
+					Source           string     `json:"source"`
+					PromptBoundary   string     `json:"prompt_boundary"`
+					PrivilegeContext string     `json:"privilege_context"`
+				} `json:"properties"`
+			} `json:"results"`
+		} `json:"runs"`
 	}
 	if err := json.Unmarshal(sarifBytes, &sarifShape); err != nil {
 		t.Fatal(err)
 	}
 	if sarifShape.Version != "2.1.0" || len(sarifShape.Runs) != 1 {
 		t.Fatalf("unexpected SARIF shape: %#v", sarifShape)
+	}
+	if len(sarifShape.Runs[0].Results) == 0 {
+		t.Fatal("expected vulnerable fixture to render SARIF results")
+	}
+	var sawCodexPromptFinding bool
+	for _, result := range sarifShape.Runs[0].Results {
+		if result.RuleID != "CODX001" {
+			continue
+		}
+		sawCodexPromptFinding = true
+		if result.Level == "" || result.Properties.Severity == "" || result.Properties.Confidence == "" {
+			t.Fatalf("CODX001 SARIF result lost level/severity/confidence: %#v", result)
+		}
+		if result.Properties.Source == "" || result.Properties.PromptBoundary == "" || result.Properties.PrivilegeContext == "" {
+			t.Fatalf("CODX001 SARIF result lost guard properties: %#v", result)
+		}
+		if len(result.Locations) != 1 || result.Locations[0].PhysicalLocation.ArtifactLocation.URI == "" || result.Locations[0].PhysicalLocation.Region.StartLine == 0 {
+			t.Fatalf("CODX001 SARIF result lost location: %#v", result)
+		}
+	}
+	if !sawCodexPromptFinding {
+		t.Fatalf("expected CODX001 SARIF result, got %#v", sarifShape.Runs[0].Results)
 	}
 }

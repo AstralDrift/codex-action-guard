@@ -1,0 +1,48 @@
+name: Codex Release Notes Draft
+
+on:
+  workflow_dispatch:
+    inputs:
+      base:
+        description: Base ref or tag
+        required: true
+      head:
+        description: Head ref or tag
+        required: true
+      release_name:
+        description: Release name
+        required: false
+
+permissions:
+  contents: read
+
+jobs:
+  codex-release-notes:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    steps:
+      - name: Checkout selected ref
+        uses: actions/checkout@v5
+        with:
+          ref: ${{ inputs.head }}
+          fetch-depth: 0
+          persist-credentials: false
+
+      - name: Run Codex release notes draft
+        id: run_codex
+        uses: openai/codex-action@v1
+        with:
+          openai-api-key: ${{ secrets.OPENAI_API_KEY }}
+          prompt-file: .github/codex/prompts/release-notes-draft.md
+          output-file: release-notes-draft.json
+          output-schema-file: .github/codex/schemas/release-notes-draft.schema.json
+          sandbox: read-only
+          safety-strategy: drop-sudo
+
+      - name: Upload release notes draft artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: codex-release-notes-draft
+          path: release-notes-draft.json
+          if-no-files-found: error

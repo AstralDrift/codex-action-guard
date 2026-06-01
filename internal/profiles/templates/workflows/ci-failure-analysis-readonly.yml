@@ -1,0 +1,44 @@
+name: Codex CI Failure Analysis (read-only)
+
+on:
+  workflow_run:
+    workflows: ["CI"]
+    types: [completed]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  actions: read
+  checks: read
+
+jobs:
+  codex-ci-failure-analysis:
+    if: ${{ github.event_name == 'workflow_dispatch' || github.event.workflow_run.conclusion == 'failure' }}
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      actions: read
+      checks: read
+    steps:
+      - name: Checkout default branch
+        uses: actions/checkout@v5
+        with:
+          persist-credentials: false
+
+      - name: Run Codex CI analysis
+        id: run_codex
+        uses: openai/codex-action@v1
+        with:
+          openai-api-key: ${{ secrets.OPENAI_API_KEY }}
+          prompt-file: .github/codex/prompts/ci-failure-analysis-readonly.md
+          output-file: codex-ci-analysis.json
+          output-schema-file: .github/codex/schemas/ci-failure-analysis-readonly.schema.json
+          sandbox: read-only
+          safety-strategy: drop-sudo
+
+      - name: Upload analysis artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: codex-ci-failure-analysis
+          path: codex-ci-analysis.json
+          if-no-files-found: error

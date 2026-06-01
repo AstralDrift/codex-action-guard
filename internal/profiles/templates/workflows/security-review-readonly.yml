@@ -1,0 +1,41 @@
+name: Codex Security Review (read-only)
+
+on:
+  pull_request:
+    types: [opened, synchronize, reopened, ready_for_review]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  pull-requests: read
+
+jobs:
+  codex-security-review:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      pull-requests: read
+    steps:
+      - name: Checkout review target
+        uses: actions/checkout@v5
+        with:
+          ref: ${{ github.event_name == 'pull_request' && format('refs/pull/{0}/merge', github.event.pull_request.number) || github.ref }}
+          persist-credentials: false
+
+      - name: Run Codex security review
+        id: run_codex
+        uses: openai/codex-action@v1
+        with:
+          openai-api-key: ${{ secrets.OPENAI_API_KEY }}
+          prompt-file: .github/codex/prompts/security-review-readonly.md
+          output-file: codex-security-review.json
+          output-schema-file: .github/codex/schemas/security-review-readonly.schema.json
+          sandbox: read-only
+          safety-strategy: drop-sudo
+
+      - name: Upload security review artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: codex-security-review
+          path: codex-security-review.json
+          if-no-files-found: error

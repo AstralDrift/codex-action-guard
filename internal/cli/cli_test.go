@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"os"
 	"path/filepath"
+	"reflect"
 	"strings"
 	"testing"
 )
@@ -26,6 +27,17 @@ func TestAuditAcceptsFlagsAfterPath(t *testing.T) {
 	}
 	if !strings.Contains(stdout.String(), `"tool": "codex-action-guard"`) {
 		t.Fatalf("expected JSON report, got %s", stdout.String())
+	}
+}
+
+func TestNormalizeFlagArgsSupportsInterspersedFlagsAndSeparator(t *testing.T) {
+	got := normalizeFlagArgs(
+		[]string{"target", "--format", "json", "--all", "--", "--literal"},
+		map[string]bool{"format": true},
+	)
+	want := []string{"--format", "json", "--all", "target", "--", "--literal"}
+	if !reflect.DeepEqual(got, want) {
+		t.Fatalf("unexpected normalized args\nwant %#v\ngot  %#v", want, got)
 	}
 }
 

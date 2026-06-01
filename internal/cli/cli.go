@@ -12,6 +12,7 @@ import (
 	"runtime/debug"
 	"strings"
 
+	"github.com/AstralDrift/codex-action-guard/internal/githubactions"
 	"github.com/AstralDrift/codex-action-guard/internal/guard"
 	"github.com/AstralDrift/codex-action-guard/internal/profiles"
 )
@@ -325,21 +326,7 @@ func gitChangedFiles(revRange string) ([]string, error) {
 }
 
 func filterRelevant(files []string) []string {
-	var out []string
-	for _, file := range files {
-		if isRelevantForCLI(file) {
-			out = append(out, filepath.ToSlash(file))
-		}
-	}
-	return out
-}
-
-func isRelevantForCLI(file string) bool {
-	file = filepath.ToSlash(file)
-	if strings.HasPrefix(file, ".github/workflows/") && (strings.HasSuffix(file, ".yml") || strings.HasSuffix(file, ".yaml")) {
-		return true
-	}
-	return strings.HasPrefix(file, ".github/codex/prompts/") || strings.HasPrefix(file, ".github/codex/schemas/") || file == "AGENTS.md"
+	return githubactions.RelevantDiffFiles(files)
 }
 
 func currentDir() string {
@@ -364,26 +351,4 @@ Usage:
 Profiles:
   %s
 `, strings.Join(profiles.Names(), ", "))
-}
-
-func normalizeFlagArgs(args []string, valueFlags map[string]bool) []string {
-	var flags []string
-	var positionals []string
-	for i := 0; i < len(args); i++ {
-		arg := args[i]
-		if strings.HasPrefix(arg, "--") && arg != "--" {
-			flags = append(flags, arg)
-			name := strings.TrimPrefix(arg, "--")
-			if eq := strings.Index(name, "="); eq >= 0 {
-				name = name[:eq]
-			}
-			if valueFlags[name] && !strings.Contains(arg, "=") && i+1 < len(args) {
-				i++
-				flags = append(flags, args[i])
-			}
-			continue
-		}
-		positionals = append(positionals, arg)
-	}
-	return append(flags, positionals...)
 }

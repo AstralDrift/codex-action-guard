@@ -4,7 +4,6 @@ import (
 	"bytes"
 	"encoding/json"
 	"fmt"
-	"regexp"
 	"sort"
 	"strings"
 )
@@ -99,89 +98,6 @@ func RenderMarkdown(report Report) string {
 
 func RenderJSON(report Report) ([]byte, error) {
 	return json.MarshalIndent(report, "", "  ")
-}
-
-func RenderSARIF(report Report) ([]byte, error) {
-	rules := make([]map[string]any, 0, len(ruleDocs))
-	for _, doc := range ruleDocs {
-		rules = append(rules, map[string]any{
-			"id":   doc.ID,
-			"name": doc.Title,
-			"shortDescription": map[string]any{
-				"text": doc.Title,
-			},
-			"fullDescription": map[string]any{
-				"text": doc.Summary,
-			},
-			"help": map[string]any{
-				"text": RenderRuleDoc(doc),
-			},
-			"properties": map[string]any{
-				"defaultSeverity": doc.DefaultSeverity,
-			},
-		})
-	}
-
-	results := make([]map[string]any, 0, len(report.Findings))
-	for _, finding := range report.Findings {
-		result := map[string]any{
-			"ruleId": finding.RuleID,
-			"level":  SARIFLevel(finding.Severity),
-			"message": map[string]any{
-				"text": fmt.Sprintf("%s: %s", finding.RuleID, finding.Title),
-			},
-			"locations": []map[string]any{
-				{
-					"physicalLocation": map[string]any{
-						"artifactLocation": map[string]any{
-							"uri": finding.File,
-						},
-						"region": map[string]any{
-							"startLine": nonZero(finding.Line, 1),
-						},
-					},
-				},
-			},
-			"properties": map[string]any{
-				"severity":             finding.Severity,
-				"confidence":           finding.Confidence,
-				"source":               finding.Source,
-				"prompt_boundary":      finding.PromptBoundary,
-				"codex_invocation":     finding.CodexInvocation,
-				"privilege_context":    finding.PrivilegeContext,
-				"downstream_sink":      finding.DownstreamSink,
-				"why_it_matters":       finding.WhyItMatters,
-				"safer_pattern":        finding.SaferPattern,
-				"false_positive_notes": finding.FalsePositiveNotes,
-				"references":           finding.References,
-			},
-		}
-		results = append(results, result)
-	}
-
-	driver := map[string]any{
-		"name":  ToolName,
-		"rules": rules,
-	}
-	if regexp.MustCompile(`^[0-9]+\.[0-9]+\.[0-9]+`).MatchString(report.Metadata.Version) {
-		driver["semanticVersion"] = report.Metadata.Version
-	} else {
-		driver["version"] = report.Metadata.Version
-	}
-
-	sarif := map[string]any{
-		"version": "2.1.0",
-		"$schema": "https://json.schemastore.org/sarif-2.1.0.json",
-		"runs": []map[string]any{
-			{
-				"tool": map[string]any{
-					"driver": driver,
-				},
-				"results": results,
-			},
-		},
-	}
-	return json.MarshalIndent(sarif, "", "  ")
 }
 
 func RenderRuleDoc(doc RuleDoc) string {

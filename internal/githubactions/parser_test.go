@@ -33,6 +33,29 @@ jobs:
 	}
 }
 
+func TestParseWorkflowAllowsJobsWithoutSteps(t *testing.T) {
+	workflow, err := ParseWorkflow("workflow.yml", []byte(`name: no steps
+on: workflow_dispatch
+jobs:
+  metadata:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+`))
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(workflow.Jobs) != 1 {
+		t.Fatalf("expected one job, got %#v", workflow.Jobs)
+	}
+	if len(workflow.Jobs[0].Steps) != 0 {
+		t.Fatalf("expected no steps, got %#v", workflow.Jobs[0].Steps)
+	}
+	if !workflow.Jobs[0].Permissions.Explicit {
+		t.Fatal("expected explicit permissions to still be parsed")
+	}
+}
+
 func TestContainsUntrustedExpression(t *testing.T) {
 	if !ContainsUntrustedExpression("${{ github.event.pull_request.body }}") {
 		t.Fatal("expected PR body to be untrusted")
