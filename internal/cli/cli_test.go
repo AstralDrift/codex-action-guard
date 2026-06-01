@@ -134,6 +134,153 @@ func TestRulesInvalidFormat(t *testing.T) {
 	}
 }
 
+func TestInstallCreatesDefaultArtifactWorkflow(t *testing.T) {
+	root := t.TempDir()
+	var stdout bytes.Buffer
+	var stderr bytes.Buffer
+	code := Run([]string{"install", "--out", root}, &stdout, &stderr, BuildInfo{Version: "test"})
+	if code != 0 {
+		t.Fatalf("expected exit 0, got %d: %s", code, stderr.String())
+	}
+	if !strings.Contains(stdout.String(), "preset: artifact") {
+		t.Fatalf("expected selected preset in stdout, got %s", stdout.String())
+	}
+	data := readInstalledWorkflow(t, root)
+	text := string(data)
+	for _, want := range []string{
+		"uses: AstralDrift/codex-action-guard@v0",
+		"format: markdown",
+		"uses: actions/upload-artifact@v4",
+		"persist-credentials: false",
+	} {
+		if !strings.Contains(text, want) {
+			t.Fatalf("expected workflow to contain %q:\n%s", want, text)
+		}
+	}
+	if strings.Contains(text, "security-events: write") {
+		t.Fatalf("artifact preset should not request security-events write permission:\n%s", text)
+	}
+}
+
+func TestInstallCreatesSARIFWorkflow(t *testing.T) {
+	root := t.TempDir()
+	var stdout bytes.Buffer
+	var stderr bytes.Buffer
+	code := Run([]string{"install", "--preset", "sarif", "--out", root}, &stdout, &stderr, BuildInfo{Version: "test"})
+	if code != 0 {
+		t.Fatalf("expected exit 0, got %d: %s", code, stderr.String())
+	}
+	if !strings.Contains(stdout.String(), "preset: sarif") {
+		t.Fatalf("expected selected preset in stdout, got %s", stdout.String())
+	}
+	text := string(readInstalledWorkflow(t, root))
+	for _, want := range []string{
+		"uses: AstralDrift/codex-action-guard@v0",
+		"format: sarif",
+		"security-events: write",
+		"uses: github/codeql-action/upload-sarif@v4",
+	} {
+		if !strings.Contains(text, want) {
+			t.Fatalf("expected workflow to contain %q:\n%s", want, text)
+		}
+	}
+}
+
+func TestInstallOutWritesUnderTargetRepo(t *testing.T) {
+	root := t.TempDir()
+	target := filepath.Join(root, "repo")
+	var stdout bytes.Buffer
+	var stderr bytes.Buffer
+	code := Run([]string{"install", "--out", target}, &stdout, &stderr, BuildInfo{Version: "test"})
+	if code != 0 {
+		t.Fatalf("expected exit 0, got %d: %s", code, stderr.String())
+	}
+	want := filepath.Join(target, ".github", "workflows", "codex-action-guard.yml")
+	if _, err := os.Stat(want); err != nil {
+		t.Fatalf("expected workflow under --out path: %v", err)
+	}
+	if !strings.Contains(stdout.String(), want) {
+		t.Fatalf("expected stdout to include created file path %q, got %s", want, stdout.String())
+	}
+}
+
+func TestInstallRefusesOverwriteWithoutForce(t *testing.T) {
+	root := t.TempDir()
+	path := filepath.Join(root, ".github", "workflows", "codex-action-guard.yml")
+	if err := os.MkdirAll(filepath.Dir(path), 0o755); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(path, []byte("existing\n"), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	var stdout bytes.Buffer
+	var stderr bytes.Buffer
+	code := Run([]string{"install", "--out", root}, &stdout, &stderr, BuildInfo{Version: "test"})
+	if code != 1 {
+		t.Fatalf("expected exit 1, got %d", code)
+	}
+	data, err := os.ReadFile(path)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if string(data) != "existing\n" {
+		t.Fatalf("expected existing workflow to be preserved, got %s", string(data))
+	}
+	if !strings.Contains(stderr.String(), "pass --force") {
+		t.Fatalf("expected force hint, got %s", stderr.String())
+	}
+}
+
+func TestInstallForceOverwrites(t *testing.T) {
+	root := t.TempDir()
+	path := filepath.Join(root, ".github", "workflows", "codex-action-guard.yml")
+	if err := os.MkdirAll(filepath.Dir(path), 0o755); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(path, []byte("existing\n"), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	var stdout bytes.Buffer
+	var stderr bytes.Buffer
+	code := Run([]string{"install", "--out", root, "--force"}, &stdout, &stderr, BuildInfo{Version: "test"})
+	if code != 0 {
+		t.Fatalf("expected exit 0, got %d: %s", code, stderr.String())
+	}
+	data, err := os.ReadFile(path)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if string(data) == "existing\n" || !strings.Contains(string(data), "Codex Action Guard") {
+		t.Fatalf("expected generated workflow to overwrite existing content, got %s", string(data))
+	}
+}
+
+func TestInstallUnknownPreset(t *testing.T) {
+	root := t.TempDir()
+	var stdout bytes.Buffer
+	var stderr bytes.Buffer
+	code := Run([]string{"install", "--preset", "junit", "--out", root}, &stdout, &stderr, BuildInfo{Version: "test"})
+	if code != 2 {
+		t.Fatalf("expected exit 2, got %d", code)
+	}
+	if stdout.Len() != 0 {
+		t.Fatalf("expected no stdout, got %s", stdout.String())
+	}
+	if !strings.Contains(stderr.String(), `unknown install preset "junit"`) {
+		t.Fatalf("unexpected stderr: %s", stderr.String())
+	}
+}
+
+func readInstalledWorkflow(t *testing.T, root string) []byte {
+	t.Helper()
+	path := filepath.Join(root, ".github", "workflows", "codex-action-guard.yml")
+	data, err := os.ReadFile(path)
+	if err != nil {
+		t.Fatal(err)
+	}
+	return data
+}
+
 func TestCLISmokeAgainstFixtures(t *testing.T) {
 	fixture := filepath.Join("..", "..", "fixtures", "vulnerable")
 	var stdout bytes.Buffer

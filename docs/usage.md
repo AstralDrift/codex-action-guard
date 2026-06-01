@@ -24,6 +24,24 @@ Options:
 
 The command audits generated output before exiting.
 
+## `install`
+
+Install a guard workflow in a repository:
+
+```sh
+codex-action-guard install --preset artifact
+```
+
+Options:
+
+- `--preset artifact|sarif`: generated workflow shape. Defaults to `artifact`.
+- `--out <repo>`: output repository path. Defaults to the current directory.
+- `--force`: overwrite `.github/workflows/codex-action-guard.yml` when it already exists.
+
+The artifact preset uses `contents: read`, emits Markdown, and uploads a report artifact. The SARIF preset adds `security-events: write`, emits SARIF, and uploads to GitHub code scanning.
+
+See [`install.md`](install.md) for the exact generated workflows.
+
 ## `audit`
 
 Audit workflows in the current repository:

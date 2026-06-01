@@ -27,19 +27,19 @@ This is intentionally not a broad agentic workflow scanner. v0 focuses on the Op
 
 ## Quick start
 
-Audit a repository:
+Install the guard in your repo:
 
 ```sh
-go run ./cmd/codex-action-guard audit --all
+codex-action-guard install --preset artifact
 ```
 
-Generate a safe read-only PR review profile:
+Generate a safe Codex profile:
 
 ```sh
 codex-action-guard init --profile pr-review-readonly
 ```
 
-Fail CI only on high or critical findings:
+Audit manually:
 
 ```sh
 codex-action-guard audit --all --fail-on high
@@ -62,6 +62,8 @@ go run ./cmd/codex-action-guard audit --all
 
 ```sh
 codex-action-guard version
+codex-action-guard install --preset artifact
+codex-action-guard install --preset sarif --out ../target-repo
 codex-action-guard init --profile pr-review-readonly
 codex-action-guard audit --all --format markdown
 codex-action-guard audit .github/workflows/codex.yml --format sarif --output codex-action-guard.sarif
@@ -73,6 +75,8 @@ codex-action-guard explain CODX001
 
 ## GitHub Action usage
 
+`codex-action-guard install` writes one of the workflows below for you. The examples use `AstralDrift/codex-action-guard@v0`, a floating major tag maintained by the release process and backed by the latest compatible v0 release.
+
 ```yaml
 name: Codex Action Guard
 
@@ -82,6 +86,8 @@ on:
       - ".github/workflows/**"
       - ".github/codex/**"
       - "AGENTS.md"
+      - "action.yml"
+  workflow_dispatch:
 
 permissions:
   contents: read
@@ -107,7 +113,9 @@ jobs:
           sarif_file: codex-action-guard.sarif
 ```
 
-The action wrapper currently uses Go from the checked-out action source. Release docs describe the path to prebuilt binaries later.
+The action wrapper currently uses Go from the checked-out action source. Tagged releases also publish CLI archives and checksums for direct installation.
+
+See [docs/install.md](docs/install.md) for the artifact and SARIF installer presets.
 
 ## Safe profiles
 
@@ -171,6 +179,7 @@ Downstream tooling can consume:
 
 - [Architecture](docs/architecture.md)
 - [Usage guide](docs/usage.md)
+- [Install guide](docs/install.md)
 - [Profiles](docs/profiles.md)
 - [Rule reference](docs/rules.md)
 - [Report formats](docs/report-formats.md)

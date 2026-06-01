@@ -14,6 +14,7 @@ import (
 
 	"github.com/AstralDrift/codex-action-guard/internal/githubactions"
 	"github.com/AstralDrift/codex-action-guard/internal/guard"
+	"github.com/AstralDrift/codex-action-guard/internal/installer"
 	"github.com/AstralDrift/codex-action-guard/internal/profiles"
 )
 
@@ -31,6 +32,8 @@ func Run(args []string, stdout io.Writer, stderr io.Writer, build BuildInfo) int
 	switch args[0] {
 	case "version":
 		return runVersion(stdout, build)
+	case "install":
+		return runInstall(args[1:], stdout, stderr)
 	case "init":
 		return runInit(args[1:], stdout, stderr, build)
 	case "audit":
@@ -51,6 +54,35 @@ func Run(args []string, stdout io.Writer, stderr io.Writer, build BuildInfo) int
 		printUsage(stderr)
 		return 2
 	}
+}
+
+func runInstall(args []string, stdout io.Writer, stderr io.Writer) int {
+	fs := flag.NewFlagSet("install", flag.ContinueOnError)
+	fs.SetOutput(stderr)
+	preset := fs.String("preset", installer.PresetArtifact, "artifact or sarif")
+	out := fs.String("out", ".", "output repository path")
+	force := fs.Bool("force", false, "overwrite generated workflow")
+	if err := fs.Parse(normalizeFlagArgs(args, map[string]bool{
+		"preset": true,
+		"out":    true,
+	})); err != nil {
+		return 2
+	}
+	if fs.NArg() != 0 {
+		fmt.Fprintln(stderr, "install does not accept positional arguments")
+		return 2
+	}
+	result, err := installer.Generate(installer.Options{Preset: *preset, Out: *out, Force: *force})
+	if err != nil {
+		if installer.IsUnknownPreset(err) {
+			fmt.Fprintf(stderr, "unknown install preset %q. Available presets: %s\n", *preset, strings.Join(installer.Presets(), ", "))
+			return 2
+		}
+		fmt.Fprintf(stderr, "install failed: %v\n", err)
+		return 1
+	}
+	fmt.Fprintf(stdout, "created %s (preset: %s)\n", result.Path, result.Preset)
+	return 0
 }
 
 func runVersion(stdout io.Writer, build BuildInfo) int {
@@ -387,6 +419,7 @@ func printUsage(w io.Writer) {
 
 Usage:
   codex-action-guard version
+  codex-action-guard install [--preset artifact|sarif] [--out <repo>] [--force]
   codex-action-guard init --profile <name> [--out <repo>] [--force]
   codex-action-guard audit [path] [--format markdown|json|sarif] [--output <file>] [--fail-on low|medium|high|critical|none] [--all]
   codex-action-guard diff <rev-range> [--format markdown|json|sarif] [--output <file>] [--fail-on low|medium|high|critical|none]

@@ -13,4 +13,10 @@ This project follows Semantic Versioning once tagged releases begin. Changes are
 - Deterministic `rules` metadata export for downstream tooling.
 - JSON schemas for audit reports and rule metadata exports.
 - Tag-triggered release workflow that publishes cross-platform CLI archives and checksums.
+- `install` command with artifact and SARIF guard workflow presets.
+- Generated workflow examples and installer documentation.
 - CI dogfooding of the repository's own workflows.
+
+### Changed
+
+- Release workflow now runs only for semver-like `vMAJOR.MINOR.PATCH` tags so the floating `v0` action tag does not create a separate release.

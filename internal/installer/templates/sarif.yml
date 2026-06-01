@@ -1,0 +1,54 @@
+name: Codex Action Guard
+
+on:
+  pull_request:
+    paths:
+      - ".github/workflows/**"
+      - ".github/codex/**"
+      - "AGENTS.md"
+      - "action.yml"
+  push:
+    branches: [main]
+    paths:
+      - ".github/workflows/**"
+      - ".github/codex/**"
+      - "AGENTS.md"
+      - "action.yml"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  security-events: write
+
+jobs:
+  audit:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      security-events: write
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v5
+        with:
+          persist-credentials: false
+
+      - name: Run codex-action-guard
+        uses: AstralDrift/codex-action-guard@v0
+        with:
+          fail-on: high
+          format: sarif
+          output: codex-action-guard.sarif
+
+      - name: Upload SARIF
+        if: always()
+        uses: github/codeql-action/upload-sarif@v4
+        with:
+          sarif_file: codex-action-guard.sarif
+
+      - name: Upload SARIF artifact
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: codex-action-guard-sarif
+          path: codex-action-guard.sarif
+          if-no-files-found: error

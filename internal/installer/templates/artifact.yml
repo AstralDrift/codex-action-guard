@@ -1,0 +1,46 @@
+name: Codex Action Guard
+
+on:
+  pull_request:
+    paths:
+      - ".github/workflows/**"
+      - ".github/codex/**"
+      - "AGENTS.md"
+      - "action.yml"
+  push:
+    branches: [main]
+    paths:
+      - ".github/workflows/**"
+      - ".github/codex/**"
+      - "AGENTS.md"
+      - "action.yml"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  audit:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v5
+        with:
+          persist-credentials: false
+
+      - name: Run codex-action-guard
+        uses: AstralDrift/codex-action-guard@v0
+        with:
+          fail-on: high
+          format: markdown
+          output: codex-action-guard.md
+
+      - name: Upload audit report
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: codex-action-guard-report
+          path: codex-action-guard.md
+          if-no-files-found: error
