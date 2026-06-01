@@ -1,0 +1,41 @@
+name: Self Audit
+
+on:
+  pull_request:
+    paths:
+      - ".github/workflows/**"
+      - ".github/codex/**"
+      - "AGENTS.md"
+      - "action.yml"
+  push:
+    branches: [main]
+    paths:
+      - ".github/workflows/**"
+      - ".github/codex/**"
+      - "AGENTS.md"
+      - "action.yml"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  self-audit:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v5
+        with:
+          persist-credentials: false
+
+      - name: Run self-audit
+        run: go run ./cmd/codex-action-guard audit --all --fail-on high --format markdown --output self-audit.md
+
+      - name: Upload self-audit report
+        uses: actions/upload-artifact@v4
+        with:
+          name: codex-action-guard-self-audit
+          path: self-audit.md
+          if-no-files-found: error

@@ -33,6 +33,10 @@ Security reports are in scope when they affect:
 
 Reports about unsupported providers or generic AI workflows are normally out of scope for v0 unless they also affect supported Codex GitHub Action behavior.
 
+## Boundaries
+
+This project does not guarantee that a workflow is secure. It does not replace GitHub security controls, branch protection, CodeQL, actionlint, zizmor, human review, least privilege, protected environments, or secret management. It is a narrow Codex GitHub Action safety kit that looks for specific unsafe trust-boundary patterns.
+
 ## Disclosure expectations
 
 Maintainers will acknowledge valid reports as quickly as practical, triage impact, and coordinate a fix before public disclosure. Because this is an early open-source project, exact response times may vary.
