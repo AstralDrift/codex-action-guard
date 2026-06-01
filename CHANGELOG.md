@@ -20,3 +20,4 @@ This project follows Semantic Versioning once tagged releases begin. Changes are
 ### Changed
 
 - Release workflow now runs only for semver-like `vMAJOR.MINOR.PATCH` tags so the floating `v0` action tag does not create a separate release.
+- Generated workflows now use `actions/upload-artifact@v5`.

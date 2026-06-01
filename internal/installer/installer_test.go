@@ -51,7 +51,7 @@ func TestArtifactTemplateSafetyProperties(t *testing.T) {
 		"uses: AstralDrift/codex-action-guard@v0",
 		"fail-on: high",
 		"format: markdown",
-		"uses: actions/upload-artifact@v4",
+		"uses: actions/upload-artifact@v5",
 		"permissions:\n  contents: read",
 		"workflow_dispatch:",
 		`- ".github/workflows/**"`,

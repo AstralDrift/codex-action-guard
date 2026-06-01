@@ -41,7 +41,7 @@ jobs:
           safety-strategy: drop-sudo
 
       - name: Upload release notes draft artifact
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v5
         with:
           name: codex-release-notes-draft
           path: release-notes-draft.json

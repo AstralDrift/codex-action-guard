@@ -34,7 +34,7 @@ jobs:
           safety-strategy: drop-sudo
 
       - name: Upload security review artifact
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v5
         with:
           name: codex-security-review
           path: codex-security-review.json

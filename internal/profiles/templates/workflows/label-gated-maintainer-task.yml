@@ -46,7 +46,7 @@ jobs:
           allow-bots: false
 
       - name: Upload maintainer task artifact
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v5
         with:
           name: codex-maintainer-task
           path: codex-maintainer-task.json

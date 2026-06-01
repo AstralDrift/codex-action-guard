@@ -150,7 +150,7 @@ func TestInstallCreatesDefaultArtifactWorkflow(t *testing.T) {
 	for _, want := range []string{
 		"uses: AstralDrift/codex-action-guard@v0",
 		"format: markdown",
-		"uses: actions/upload-artifact@v4",
+		"uses: actions/upload-artifact@v5",
 		"persist-credentials: false",
 	} {
 		if !strings.Contains(text, want) {
