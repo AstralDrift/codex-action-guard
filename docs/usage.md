@@ -78,6 +78,21 @@ Options:
 
 Packets include detected Codex invocations, prompt boundaries, privilege context, downstream sinks, findings, safe-pattern suggestions, and review questions.
 
+## `rules`
+
+Export deterministic rule metadata:
+
+```sh
+codex-action-guard rules --format json --output codex-action-guard-rules.json
+```
+
+Options:
+
+- `--format json|markdown`: default is `json`.
+- `--output <file>`: write the rule catalog to a file.
+
+The JSON output is described by [`../schemas/rules.schema.json`](../schemas/rules.schema.json) and intentionally does not include a timestamp.
+
 ## `explain`
 
 Print rule documentation:

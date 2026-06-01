@@ -20,6 +20,8 @@ It includes:
 
 JSON is intended for automation and downstream tooling.
 
+The report schema is published at [`../schemas/report.schema.json`](../schemas/report.schema.json).
+
 Top-level fields:
 
 - `metadata`: tool name, version, rule version, and generation time.
@@ -51,6 +53,21 @@ Each finding includes:
 - `references`
 
 The JSON schema is stable for v0 consumers, but additional fields may be added before v1.
+
+## Rule metadata
+
+Rule metadata can be exported without running an audit:
+
+```sh
+codex-action-guard rules --format json --output codex-action-guard-rules.json
+```
+
+The rules export is deterministic and does not include a timestamp. Its schema is published at [`../schemas/rules.schema.json`](../schemas/rules.schema.json).
+
+Top-level fields:
+
+- `metadata`: tool name, version, and rule version.
+- `rules`: rule ID, title, default severity, summary, examples, false-positive notes, remediation, safe patterns, and references.
 
 ## SARIF
 

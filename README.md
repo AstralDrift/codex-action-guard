@@ -3,6 +3,8 @@
 Safe-by-default Codex GitHub Action workflows.
 
 [![CI](https://github.com/AstralDrift/codex-action-guard/actions/workflows/ci.yml/badge.svg)](https://github.com/AstralDrift/codex-action-guard/actions/workflows/ci.yml)
+[![Release](https://img.shields.io/github/v/release/AstralDrift/codex-action-guard?include_prereleases)](https://github.com/AstralDrift/codex-action-guard/releases)
+[![Go Reference](https://pkg.go.dev/badge/github.com/AstralDrift/codex-action-guard.svg)](https://pkg.go.dev/github.com/AstralDrift/codex-action-guard)
 
 `codex-action-guard` is an independent community project. It is not affiliated with, endorsed by, or certified by OpenAI.
 
@@ -65,6 +67,7 @@ codex-action-guard audit --all --format markdown
 codex-action-guard audit .github/workflows/codex.yml --format sarif --output codex-action-guard.sarif
 codex-action-guard diff main...HEAD --fail-on high
 codex-action-guard packet --target human --changed main...HEAD
+codex-action-guard rules --format json
 codex-action-guard explain CODX001
 ```
 
@@ -155,6 +158,14 @@ Safer pattern: Use a trusted prompt-file, pass stable identifiers, sanitize untr
 Markdown reports are designed for maintainers. JSON reports provide a stable schema with metadata, scanned files, findings, detected invocations, safe patterns, and profile suggestions. SARIF output is suitable for code scanning ingestion.
 
 See [docs/report-formats.md](docs/report-formats.md) for schema notes and examples.
+
+## Machine-readable outputs
+
+Downstream tooling can consume:
+
+- JSON audit reports, described by [`schemas/report.schema.json`](schemas/report.schema.json).
+- Rule metadata from `codex-action-guard rules --format json`, described by [`schemas/rules.schema.json`](schemas/rules.schema.json).
+- SARIF 2.1.0 reports for GitHub code scanning upload.
 
 ## Documentation
 

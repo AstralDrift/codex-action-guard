@@ -39,6 +39,8 @@ func Run(args []string, stdout io.Writer, stderr io.Writer, build BuildInfo) int
 		return runDiff(args[1:], stdout, stderr, build)
 	case "packet":
 		return runPacket(args[1:], stdout, stderr, build)
+	case "rules":
+		return runRules(args[1:], stdout, stderr, build)
 	case "explain":
 		return runExplain(args[1:], stdout, stderr)
 	case "help", "-h", "--help":
@@ -268,6 +270,45 @@ func runExplain(args []string, stdout io.Writer, stderr io.Writer) int {
 	return 0
 }
 
+func runRules(args []string, stdout io.Writer, stderr io.Writer, build BuildInfo) int {
+	fs := flag.NewFlagSet("rules", flag.ContinueOnError)
+	fs.SetOutput(stderr)
+	format := fs.String("format", "json", "json or markdown")
+	output := fs.String("output", "", "write rule catalog to file")
+	if err := fs.Parse(normalizeFlagArgs(args, map[string]bool{
+		"format": true,
+		"output": true,
+	})); err != nil {
+		return 2
+	}
+	if fs.NArg() != 0 {
+		fmt.Fprintln(stderr, "rules does not accept positional arguments")
+		return 2
+	}
+
+	var data []byte
+	switch strings.ToLower(*format) {
+	case "json":
+		var err error
+		data, err = guard.RenderRulesJSON(build.Version)
+		if err != nil {
+			fmt.Fprintf(stderr, "rules output failed: %v\n", err)
+			return 1
+		}
+		data = append(data, '\n')
+	case "markdown", "md":
+		data = []byte(guard.RenderRulesMarkdown(build.Version))
+	default:
+		fmt.Fprintf(stderr, "unknown rules format %q\n", *format)
+		return 2
+	}
+	if err := writeOutput(data, *output, stdout); err != nil {
+		fmt.Fprintf(stderr, "rules output failed: %v\n", err)
+		return 1
+	}
+	return 0
+}
+
 func emitReport(report guard.Report, format string, output string, stdout io.Writer) error {
 	var data []byte
 	switch strings.ToLower(format) {
@@ -290,6 +331,10 @@ func emitReport(report guard.Report, format string, output string, stdout io.Wri
 	default:
 		return fmt.Errorf("unknown format %q", format)
 	}
+	return writeOutput(data, output, stdout)
+}
+
+func writeOutput(data []byte, output string, stdout io.Writer) error {
 	if output == "" {
 		_, err := stdout.Write(data)
 		return err
@@ -346,6 +391,7 @@ Usage:
   codex-action-guard audit [path] [--format markdown|json|sarif] [--output <file>] [--fail-on low|medium|high|critical|none] [--all]
   codex-action-guard diff <rev-range> [--format markdown|json|sarif] [--output <file>] [--fail-on low|medium|high|critical|none]
   codex-action-guard packet [--target codex|human] [--changed <rev-range>] [--output <file>]
+  codex-action-guard rules [--format json|markdown] [--output <file>]
   codex-action-guard explain <RULE_ID>
 
 Profiles:

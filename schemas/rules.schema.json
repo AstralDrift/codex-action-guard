@@ -1,0 +1,58 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://github.com/AstralDrift/codex-action-guard/schemas/rules.schema.json",
+  "title": "codex-action-guard rule catalog",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["metadata", "rules"],
+  "properties": {
+    "metadata": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["tool", "version", "rule_version"],
+      "properties": {
+        "tool": { "type": "string" },
+        "version": { "type": "string" },
+        "rule_version": { "type": "string" }
+      }
+    },
+    "rules": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "id",
+          "title",
+          "default_severity",
+          "summary",
+          "examples",
+          "false_positive_notes",
+          "remediation",
+          "safe_patterns",
+          "references"
+        ],
+        "properties": {
+          "id": { "type": "string" },
+          "title": { "type": "string" },
+          "default_severity": { "type": "string", "enum": ["info", "low", "medium", "high", "critical"] },
+          "summary": { "type": "string" },
+          "examples": {
+            "type": "array",
+            "items": { "type": "string" }
+          },
+          "false_positive_notes": { "type": "string" },
+          "remediation": { "type": "string" },
+          "safe_patterns": {
+            "type": "array",
+            "items": { "type": "string" }
+          },
+          "references": {
+            "type": "array",
+            "items": { "type": "string" }
+          }
+        }
+      }
+    }
+  }
+}
