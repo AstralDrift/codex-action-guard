@@ -4,7 +4,9 @@ This project follows Semantic Versioning once tagged releases begin. Changes are
 
 ## Unreleased
 
-No unreleased changes yet.
+### Changed
+
+- Pull request checklist now asks contributors to run the dogfood audit gate.
 
 ## v0.1.1 - 2026-06-01
 
