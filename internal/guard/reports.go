@@ -221,6 +221,14 @@ func RenderPacket(report Report, target string, changed []string) string {
 	var buf bytes.Buffer
 	fmt.Fprintf(&buf, "# Codex workflow review packet\n\n")
 	fmt.Fprintf(&buf, "Target reviewer: `%s`\n\n", target)
+	if target == "codex" {
+		fmt.Fprintf(&buf, "You are reviewing Codex GitHub Action workflow safety. Do not run arbitrary commands. Do not invent vulnerabilities; only report evidence-bound issues from the packet. Use unsafe trust boundary language unless the evidence shows a concrete source-to-boundary-to-sink path.\n\n")
+		fmt.Fprintf(&buf, "Expected output format:\n\n")
+		fmt.Fprintf(&buf, "1. Summary\n")
+		fmt.Fprintf(&buf, "2. Evidence-bound issues\n")
+		fmt.Fprintf(&buf, "3. False-positive or uncertainty notes\n")
+		fmt.Fprintf(&buf, "4. Recommended safer patterns\n\n")
+	}
 	fmt.Fprintf(&buf, "## Changed workflow summary\n\n")
 	if len(changed) == 0 {
 		fmt.Fprintf(&buf, "- No changed-file range was supplied. Packet is based on the current scanned workflow state.\n")
