@@ -1,0 +1,66 @@
+name: Secure Codex workflow examples
+
+on:
+  pull_request:
+    types: [opened, synchronize, reopened]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  pull-requests: read
+
+jobs:
+  readonly-review:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      pull-requests: read
+    steps:
+      - name: Checkout PR merge commit
+        uses: actions/checkout@v5
+        with:
+          ref: refs/pull/${{ github.event.pull_request.number }}/merge
+          persist-credentials: false
+      - name: Run Codex with trusted prompt and schema
+        id: run_codex
+        uses: openai/codex-action@v1
+        with:
+          openai-api-key: ${{ secrets.OPENAI_API_KEY }}
+          prompt-file: .github/codex/prompts/review.md
+          output-file: codex-review.json
+          output-schema-file: .github/codex/schemas/review.schema.json
+          sandbox: read-only
+          safety-strategy: drop-sudo
+      - name: Upload structured review
+        uses: actions/upload-artifact@v4
+        with:
+          name: codex-review
+          path: codex-review.json
+          if-no-files-found: error
+
+  gated-comment:
+    if: ${{ github.event_name == 'workflow_dispatch' }}
+    runs-on: ubuntu-latest
+    environment: codex-maintainer-approval
+    permissions:
+      contents: read
+      issues: write
+    steps:
+      - name: Checkout trusted branch
+        uses: actions/checkout@v5
+        with:
+          persist-credentials: false
+      - name: Run Codex with schema
+        id: run_codex
+        uses: openai/codex-action@v1
+        with:
+          openai-api-key: ${{ secrets.OPENAI_API_KEY }}
+          prompt-file: .github/codex/prompts/review.md
+          output-file: codex-review.json
+          output-schema-file: .github/codex/schemas/review.schema.json
+          sandbox: read-only
+          safety-strategy: drop-sudo
+          allow-users: ${{ vars.CODEX_ALLOWED_USERS }}
+      - name: Validate and constrain comment
+        run: |
+          jq -r '.summary' codex-review.json | head -c 6000 > comment.txt
