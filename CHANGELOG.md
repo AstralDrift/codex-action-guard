@@ -4,6 +4,19 @@ This project follows Semantic Versioning once tagged releases begin. Changes are
 
 ## Unreleased
 
+No unreleased changes yet.
+
+## v0.1.1 - 2026-06-01
+
+### Changed
+
+- Generated workflows now use `actions/upload-artifact@v5`.
+- Generated workflows now opt into the GitHub Actions Node 24 JavaScript action runtime.
+- Workflows and generated templates now use `actions/checkout@v6`.
+- Release documentation now uses a reusable tag-and-floating-major flow.
+
+## v0.1.0 - 2026-06-01
+
 ### Added
 
 - Initial Go CLI with `version`, `init`, `audit`, `diff`, `packet`, and `explain`.
@@ -20,6 +33,3 @@ This project follows Semantic Versioning once tagged releases begin. Changes are
 ### Changed
 
 - Release workflow now runs only for semver-like `vMAJOR.MINOR.PATCH` tags so the floating `v0` action tag does not create a separate release.
-- Generated workflows now use `actions/upload-artifact@v5`.
-- Generated workflows now opt into the GitHub Actions Node 24 JavaScript action runtime.
-- Workflows and generated templates now use `actions/checkout@v6`.
