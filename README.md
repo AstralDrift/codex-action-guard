@@ -68,6 +68,44 @@ codex-action-guard packet --target human --changed main...HEAD
 codex-action-guard explain CODX001
 ```
 
+## GitHub Action usage
+
+```yaml
+name: Codex Action Guard
+
+on:
+  pull_request:
+    paths:
+      - ".github/workflows/**"
+      - ".github/codex/**"
+      - "AGENTS.md"
+
+permissions:
+  contents: read
+  security-events: write
+
+jobs:
+  codex-action-guard:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v5
+        with:
+          persist-credentials: false
+
+      - uses: AstralDrift/codex-action-guard@v0
+        with:
+          fail-on: high
+          format: sarif
+          output: codex-action-guard.sarif
+
+      - uses: github/codeql-action/upload-sarif@v4
+        if: always()
+        with:
+          sarif_file: codex-action-guard.sarif
+```
+
+The action wrapper currently uses Go from the checked-out action source. Release docs describe the path to prebuilt binaries later.
+
 ## Safe profiles
 
 The `init` command writes a workflow, prompt, output schema, and threat-model document. It refuses to overwrite existing files unless `--force` is set, then validates generated output by running the internal audit.
@@ -101,6 +139,17 @@ Findings use "unsafe trust boundary" and "review required" language unless the r
 
 See [docs/rules.md](docs/rules.md) and `codex-action-guard explain <RULE_ID>` for rule details.
 
+## Example finding
+
+```text
+CODX001: Untrusted GitHub event content reaches Codex prompt
+Location: .github/workflows/codex.yml:22
+Source: comment body
+Prompt boundary: with.prompt
+Privilege context: write permissions: issues
+Safer pattern: Use a trusted prompt-file, pass stable identifiers, sanitize untrusted text, or require a maintainer gate.
+```
+
 ## Output formats
 
 Markdown reports are designed for maintainers. JSON reports provide a stable schema with metadata, scanned files, findings, detected invocations, safe patterns, and profile suggestions. SARIF output is suitable for code scanning ingestion.
@@ -114,9 +163,21 @@ See [docs/report-formats.md](docs/report-formats.md) for schema notes and exampl
 - [Profiles](docs/profiles.md)
 - [Rule reference](docs/rules.md)
 - [Report formats](docs/report-formats.md)
-- [Threat model](docs/codex-ci-threat-model.md)
+- [Threat model](docs/threat-model.md)
+- [Safe patterns](docs/safe-patterns.md)
+- [Comparison](docs/comparison.md)
+- [Rule design](docs/rule-design.md)
+- [Self-audit](docs/self-audit.md)
 - [Release process](docs/release.md)
 - [Roadmap](ROADMAP.md)
+
+## Comparison
+
+`codex-action-guard` complements actionlint, zizmor, CodeQL, broad workflow scanners, AI code reviewers, and prompt eval tools. It focuses narrowly on safe Codex GitHub Action profiles and Codex-specific workflow trust-boundary analysis. See [docs/comparison.md](docs/comparison.md).
+
+## Non-goals
+
+v0 does not support Claude, Gemini, MCP, GitLab, Jenkins, Azure Pipelines, n8n, browser automation, generic AI workflows, SaaS features, or LLM-backed analysis by default.
 
 ## Development
 
