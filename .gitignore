@@ -1,0 +1,8 @@
+.DS_Store
+*.test
+*.out
+coverage.txt
+dist/
+bin/
+codex-action-guard
+codex-action-guard.sarif
