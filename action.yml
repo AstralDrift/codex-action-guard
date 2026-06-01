@@ -1,0 +1,53 @@
+name: Codex Action Guard
+description: Audit Codex GitHub Action workflows for unsafe trust boundaries.
+author: AstralDrift
+
+branding:
+  icon: shield
+  color: blue
+
+inputs:
+  path:
+    description: Path to audit.
+    required: false
+    default: "."
+  fail-on:
+    description: Severity threshold that should fail the action.
+    required: false
+    default: high
+  format:
+    description: "Report format: markdown, json, or sarif."
+    required: false
+    default: sarif
+  output:
+    description: Output report file.
+    required: false
+    default: codex-action-guard.sarif
+  all:
+    description: Include Codex prompt/schema files and AGENTS.md in the scanned-file list.
+    required: false
+    default: "true"
+
+runs:
+  using: composite
+  steps:
+    - name: Set up Go
+      uses: actions/setup-go@v5
+      with:
+        go-version-file: ${{ github.action_path }}/go.mod
+        cache: true
+
+    - name: Run codex-action-guard
+      shell: bash
+      run: |
+        set -euo pipefail
+        all_flag=()
+        if [[ "${{ inputs.all }}" == "true" ]]; then
+          all_flag=(--all)
+        fi
+        cd "$GITHUB_WORKSPACE"
+        go run "$GITHUB_ACTION_PATH/cmd/codex-action-guard" audit "${{ inputs.path }}" \
+          --format "${{ inputs.format }}" \
+          --output "${{ inputs.output }}" \
+          --fail-on "${{ inputs.fail-on }}" \
+          "${all_flag[@]}"
