@@ -2,9 +2,15 @@
 
 Safe-by-default Codex GitHub Action workflows.
 
+[![CI](https://github.com/AstralDrift/codex-action-guard/actions/workflows/ci.yml/badge.svg)](https://github.com/AstralDrift/codex-action-guard/actions/workflows/ci.yml)
+
 `codex-action-guard` is an independent community project. It is not affiliated with, endorsed by, or certified by OpenAI.
 
 Codex in GitHub Actions is powerful, but unsafe workflow composition can put prompts, secrets, write tokens, untrusted PR/comment/issue text, and downstream shell or API actions in the same trust boundary. This tool helps maintainers generate safe Codex workflow profiles and audit existing workflows that use `openai/codex-action` or direct `codex exec`.
+
+## Project status
+
+This project is in early v0 development. The CLI is usable, deterministic, and tested, but rule tuning will keep improving as maintainers share real workflow shapes and false-positive reports.
 
 ## What it does
 
@@ -16,6 +22,26 @@ Codex in GitHub Actions is powerful, but unsafe workflow composition can put pro
 - Explains each rule with examples, remediation, and false-positive notes.
 
 This is intentionally not a broad agentic workflow scanner. v0 focuses on the OpenAI Codex GitHub Action provider pack.
+
+## Quick start
+
+Audit a repository:
+
+```sh
+go run ./cmd/codex-action-guard audit --all
+```
+
+Generate a safe read-only PR review profile:
+
+```sh
+codex-action-guard init --profile pr-review-readonly
+```
+
+Fail CI only on high or critical findings:
+
+```sh
+codex-action-guard audit --all --fail-on high
+```
 
 ## Install
 
@@ -54,6 +80,8 @@ Available profiles:
 - `security-review-readonly`
 - `label-gated-maintainer-task`
 
+See [docs/profiles.md](docs/profiles.md) for the threat model and generated files for each profile.
+
 ## Rule pack
 
 v0 ships ten Codex-specific rules:
@@ -71,9 +99,24 @@ v0 ships ten Codex-specific rules:
 
 Findings use "unsafe trust boundary" and "review required" language unless the rule can show a concrete source-to-boundary-to-sink path.
 
+See [docs/rules.md](docs/rules.md) and `codex-action-guard explain <RULE_ID>` for rule details.
+
 ## Output formats
 
 Markdown reports are designed for maintainers. JSON reports provide a stable schema with metadata, scanned files, findings, detected invocations, safe patterns, and profile suggestions. SARIF output is suitable for code scanning ingestion.
+
+See [docs/report-formats.md](docs/report-formats.md) for schema notes and examples.
+
+## Documentation
+
+- [Architecture](docs/architecture.md)
+- [Usage guide](docs/usage.md)
+- [Profiles](docs/profiles.md)
+- [Rule reference](docs/rules.md)
+- [Report formats](docs/report-formats.md)
+- [Threat model](docs/codex-ci-threat-model.md)
+- [Release process](docs/release.md)
+- [Roadmap](ROADMAP.md)
 
 ## Development
 
@@ -83,3 +126,9 @@ go run ./cmd/codex-action-guard audit --all --fail-on high
 ```
 
 The repository dogfoods the scanner in CI by auditing its own GitHub Actions workflows.
+
+## Contributing and security
+
+Contributions are welcome. Start with [CONTRIBUTING.md](CONTRIBUTING.md), especially the rule quality bar and false-positive expectations.
+
+Please do not report suspected vulnerabilities in public issues. See [SECURITY.md](SECURITY.md).

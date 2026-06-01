@@ -1,0 +1,29 @@
+name: Rule request
+description: Suggest a new deterministic audit rule.
+title: "feat(rule): "
+labels: ["rules", "enhancement"]
+body:
+  - type: textarea
+    id: pattern
+    attributes:
+      label: Unsafe pattern
+      description: Describe the concrete source, prompt boundary, privilege context, or sink.
+    validations:
+      required: true
+  - type: textarea
+    id: example
+    attributes:
+      label: Sanitized example
+      render: yaml
+    validations:
+      required: true
+  - type: textarea
+    id: safer
+    attributes:
+      label: Safer pattern
+    validations:
+      required: true
+  - type: textarea
+    id: false-positives
+    attributes:
+      label: False-positive considerations
