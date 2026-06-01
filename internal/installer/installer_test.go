@@ -46,7 +46,7 @@ func TestArtifactTemplateSafetyProperties(t *testing.T) {
 		t.Fatal(err)
 	}
 	mustContainAll(t, template,
-		"uses: actions/checkout@v5",
+		"uses: actions/checkout@v6",
 		"persist-credentials: false",
 		"uses: AstralDrift/codex-action-guard@v0",
 		"fail-on: high",
@@ -71,7 +71,7 @@ func TestSARIFTemplateSafetyProperties(t *testing.T) {
 		t.Fatal(err)
 	}
 	mustContainAll(t, template,
-		"uses: actions/checkout@v5",
+		"uses: actions/checkout@v6",
 		"persist-credentials: false",
 		"uses: AstralDrift/codex-action-guard@v0",
 		"fail-on: high",

@@ -44,7 +44,7 @@ See [`../examples/install/codex-action-guard-sarif.yml`](../examples/install/cod
 
 Both presets include:
 
-- `actions/checkout@v5` with `persist-credentials: false`.
+- `actions/checkout@v6` with `persist-credentials: false`.
 - `AstralDrift/codex-action-guard@v0` with `fail-on: high`.
 - `workflow_dispatch` for manual runs.
 - Path filters for `.github/workflows/**`, `.github/codex/**`, `AGENTS.md`, and `action.yml`.

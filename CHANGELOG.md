@@ -22,3 +22,4 @@ This project follows Semantic Versioning once tagged releases begin. Changes are
 - Release workflow now runs only for semver-like `vMAJOR.MINOR.PATCH` tags so the floating `v0` action tag does not create a separate release.
 - Generated workflows now use `actions/upload-artifact@v5`.
 - Generated workflows now opt into the GitHub Actions Node 24 JavaScript action runtime.
+- Workflows and generated templates now use `actions/checkout@v6`.

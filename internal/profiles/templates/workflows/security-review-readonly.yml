@@ -20,7 +20,7 @@ jobs:
       pull-requests: read
     steps:
       - name: Checkout review target
-        uses: actions/checkout@v5
+        uses: actions/checkout@v6
         with:
           ref: ${{ github.event_name == 'pull_request' && format('refs/pull/{0}/merge', github.event.pull_request.number) || github.ref }}
           persist-credentials: false
