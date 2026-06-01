@@ -52,6 +52,7 @@ func TestArtifactTemplateSafetyProperties(t *testing.T) {
 		"fail-on: high",
 		"format: markdown",
 		"uses: actions/upload-artifact@v5",
+		"FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: true",
 		"permissions:\n  contents: read",
 		"workflow_dispatch:",
 		`- ".github/workflows/**"`,
@@ -77,6 +78,7 @@ func TestSARIFTemplateSafetyProperties(t *testing.T) {
 		"format: sarif",
 		"security-events: write",
 		"uses: github/codeql-action/upload-sarif@v4",
+		"FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: true",
 		"sarif_file: codex-action-guard.sarif",
 		"workflow_dispatch:",
 	)

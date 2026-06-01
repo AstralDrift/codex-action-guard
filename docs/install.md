@@ -48,5 +48,6 @@ Both presets include:
 - `AstralDrift/codex-action-guard@v0` with `fail-on: high`.
 - `workflow_dispatch` for manual runs.
 - Path filters for `.github/workflows/**`, `.github/codex/**`, `AGENTS.md`, and `action.yml`.
+- `FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: true` to avoid GitHub Actions Node 20 runtime deprecation warnings for JavaScript actions.
 
 The `@v0` action reference is a floating major tag maintained by the release process and currently points at the latest compatible v0 release.
