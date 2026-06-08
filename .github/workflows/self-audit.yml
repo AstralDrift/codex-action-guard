@@ -37,7 +37,7 @@ jobs:
         run: go run ./cmd/codex-action-guard audit --all --fail-on high --format markdown --output self-audit.md
 
       - name: Upload self-audit report
-        uses: actions/upload-artifact@v5
+        uses: actions/upload-artifact@v7
         with:
           name: codex-action-guard-self-audit
           path: self-audit.md
